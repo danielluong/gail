@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    /*
+     * Dark-mode surface palette. A numeric scale from sunken (sidebar
+     * shell) to raised (hovered controls) so the relative shading is
+     * explicit. Using these tokens — e.g. dark:bg-surface-200 —
+     * keeps every dark panel reading from a single source instead of
+     * dozens of inline dark:bg-[#xxx] literals.
+     */
+    --color-surface-50: #171717;
+    --color-surface-100: #1e1e1e;
+    --color-surface-150: #212121;
+    --color-surface-200: #2a2a2a;
+    --color-surface-250: #2f2f2f;
+    --color-surface-300: #333;
+    --color-surface-350: #353535;
+    --color-surface-400: #3a3a3a;
+    --color-surface-500: #444;
+    --color-surface-600: #555;
+    --color-surface-700: #888;
+}
+
+@page {
+    margin: 1.5cm;
+}
+
+@media print {
+    :root {
+        color-scheme: light;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    /*
+     * Viewport-sized shell collapses to document flow so every message
+     * prints — otherwise only the messages currently on-screen land on
+     * the page.
+     */
+    .h-dvh,
+    .h-screen {
+        height: auto !important;
+    }
+
+    .overflow-y-auto,
+    .overflow-auto {
+        overflow: visible !important;
+    }
+
+    /*
+     * Force light palette when the user prints from dark mode, but leave
+     * code blocks alone so syntax highlighting survives.
+     */
+    html.dark,
+    html.dark body,
+    html.dark *:not(pre):not(pre *):not(code):not(code *) {
+        background-color: transparent !important;
+        color: #000 !important;
+        border-color: #d4d4d8 !important;
+    }
+
+    /* Keep bubble shape via a thin border instead of a filled background. */
+    .rounded-2xl {
+        border: 1px solid #d4d4d8 !important;
+    }
+}
