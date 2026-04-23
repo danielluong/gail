@@ -35,6 +35,18 @@ npm run build
 
 CI (`.github/workflows/`) runs Pint, Larastan, ESLint, Prettier, and the full Pest suite on every push.
 
+### Pre-commit hooks
+
+A husky pre-commit hook runs `lint-staged` on staged files only:
+
+- `*.php` → `vendor/bin/pint --format agent`
+- `resources/**/*.{ts,tsx,js,jsx}` → `eslint --fix` + `prettier --write`
+- `resources/**/*.{css,json,md}` → `prettier --write`
+
+The hook is activated on fresh clones by `npm install` (via the `prepare` script). PHPStan and the full test suite are **not** gated at commit time — they run in CI. Run them locally with `composer lint:types` and `php artisan test --compact` before opening a PR.
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the short-form contributor guide.
+
 ### Larastan baseline
 
 `phpstan-baseline.neon` locks pre-existing errors so new code is held to level 5. Do **not** add new entries to the baseline; fix the underlying issue instead. If you eliminate an error, remove the corresponding entry or regenerate the baseline:

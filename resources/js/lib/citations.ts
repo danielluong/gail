@@ -68,6 +68,85 @@ export function extractCitations(
     return citations;
 }
 
+/*
+ * The research EditorAgent closes its answer with a `## Sources` (or
+ * `### Source`) section containing a numbered list. Those items — not
+ * the Researcher's tool calls — are the canonical citation map for a
+ * research answer, since the Editor curates them into final form.
+ *
+ * Accepts lines like:
+ *   1. https://example.com
+ *   2. [Title](https://example.com)
+ *   3. Title — https://example.com
+ *
+ * The section is matched from the first Sources heading through the
+ * next heading of any level or end of string — good enough for the
+ * Editor's one-section-per-answer contract without needing a full
+ * Markdown parse.
+ */
+const SOURCES_SECTION_PATTERN =
+    /(?:^|\n)#{1,6}\s+Sources?\s*\n([\s\S]*?)(?=\n#{1,6}\s|$)/i;
+const SOURCES_LINE_PATTERN = /^\s*(\d+)\.\s+(.+)$/gm;
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
+const BARE_URL_PATTERN = /https?:\/\/\S+/;
+
+export function extractSourcesFromMarkdown(
+    content: string,
+): Map<number, Citation> {
+    const citations = new Map<number, Citation>();
+
+    if (!content) {
+        return citations;
+    }
+
+    const section = content.match(SOURCES_SECTION_PATTERN);
+
+    if (!section) {
+        return citations;
+    }
+
+    for (const line of section[1].matchAll(SOURCES_LINE_PATTERN)) {
+        const n = Number.parseInt(line[1], 10);
+
+        if (!Number.isFinite(n)) {
+            continue;
+        }
+
+        const rest = line[2].trim();
+        const mdLink = rest.match(MARKDOWN_LINK_PATTERN);
+
+        if (mdLink) {
+            citations.set(n, {
+                title: mdLink[1].trim(),
+                url: mdLink[2].trim(),
+            });
+
+            continue;
+        }
+
+        const urlMatch = rest.match(BARE_URL_PATTERN);
+
+        if (!urlMatch) {
+            continue;
+        }
+
+        /*
+         * Strip trailing ),.; that punctuation captures because `\S+`
+         * is greedy — URLs rarely end in them and when they do,
+         * dropping them is safer than a broken link.
+         */
+        const url = urlMatch[0].replace(/[),.;]+$/, '');
+        const preamble = rest
+            .slice(0, rest.indexOf(urlMatch[0]))
+            .replace(/[\s—–\-:|]+$/, '')
+            .trim();
+
+        citations.set(n, { title: preamble !== '' ? preamble : url, url });
+    }
+
+    return citations;
+}
+
 export function linkifyCitations(
     content: string,
     citations: Map<number, Citation>,

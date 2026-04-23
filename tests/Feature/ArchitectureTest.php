@@ -45,3 +45,19 @@ arch('enums are pure value types')
 arch('no debug helpers left behind in application code')
     ->expect(['dd', 'dump', 'ray', 'var_dump'])
     ->not->toBeUsed();
+
+arch('plugin contracts are an internal surface — only the kernel layer and the service provider touch them')
+    ->expect('App\Ai\Workflow\Kernel\Contracts')
+    ->toOnlyBeUsedIn([
+        'App\Ai\Workflow\Kernel',                  // AgentKernel, PluginRegistry, KernelContext
+        'App\Ai\Workflow\Kernel\Contracts',        // sibling contracts
+        'App\Ai\Workflow\Kernel\Plugins',          // concrete plugin implementations
+        'App\Providers\KernelServiceProvider',     // registration
+    ]);
+
+arch('controllers stay thin — they do not import workflow contracts directly')
+    ->expect('App\Http\Controllers')
+    ->not->toUse([
+        'App\Ai\Workflow\Contracts',
+        'App\Ai\Workflow\Kernel\Contracts',
+    ]);

@@ -6,6 +6,8 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ResearchController;
+use App\Http\Controllers\RouterController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ChatController::class, 'index'])->name('home');
@@ -17,6 +19,9 @@ Route::post('/transcribe', [ChatController::class, 'transcribe'])->name('chat.tr
 Route::get('/uploads/{filename}', [ChatController::class, 'show'])
     ->where('filename', '[A-Za-z0-9._-]+')
     ->name('uploads.show');
+
+Route::post('/research', [ResearchController::class, 'research'])->name('research.run');
+Route::post('/route', [RouterController::class, 'route'])->name('route.run');
 
 Route::get('/ai-exports/{filename}', [AiExportController::class, 'show'])
     ->where('filename', '[A-Za-z0-9._-]+')

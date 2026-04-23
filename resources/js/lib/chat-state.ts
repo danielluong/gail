@@ -1,4 +1,4 @@
-import type { Message } from '@/types/chat';
+import type { Message, Phase } from '@/types/chat';
 import type { StreamEvent } from './sse';
 
 /**
@@ -84,6 +84,38 @@ export function applyChatStreamEvent(
                     ? { ...msg, content: `Error: ${event.message}` }
                     : msg,
             );
+
+        case 'phase':
+            return messages.map((msg) => {
+                if (msg.id !== assistantMessageId) {
+                    return msg;
+                }
+
+                const existing = msg.phases ?? [];
+                const idx = existing.findIndex((p) => p.key === event.key);
+
+                /*
+                 * Drop the `type` discriminator and copy the phase
+                 * payload — duplicating the event shape would leak
+                 * the SSE wire format into persisted Message state,
+                 * and `type` itself is meaningless on a Phase entry.
+                 */
+                const {
+                    type: _type,
+                    ...rest
+                } = event;
+                const next: Phase = rest;
+
+                return {
+                    ...msg,
+                    phases:
+                        idx >= 0
+                            ? existing.map((p, i) =>
+                                  i === idx ? { ...p, ...next } : p,
+                              )
+                            : [...existing, next],
+                };
+            });
 
         case 'message_usage': {
             /*

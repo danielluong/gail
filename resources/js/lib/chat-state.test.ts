@@ -445,6 +445,120 @@ describe('applyChatStreamEvent', () => {
         });
     });
 
+    describe('phase', () => {
+        it('appends the first phase event for a key', () => {
+            const before = [assistantMessage(2, '')];
+            const after = applyChatStreamEvent(
+                before,
+                {
+                    type: 'phase',
+                    key: 'researcher',
+                    label: 'Researching',
+                    status: 'running',
+                },
+                2,
+            );
+
+            expect(after[0].phases).toEqual([
+                {
+                    key: 'researcher',
+                    label: 'Researching',
+                    status: 'running',
+                },
+            ]);
+        });
+
+        it('upserts the same phase key in place rather than appending', () => {
+            const before = [
+                assistantMessage(2, '', {
+                    phases: [
+                        {
+                            key: 'researcher',
+                            label: 'Researching',
+                            status: 'running',
+                        },
+                    ],
+                }),
+            ];
+            const after = applyChatStreamEvent(
+                before,
+                {
+                    type: 'phase',
+                    key: 'researcher',
+                    label: 'Researching',
+                    status: 'complete',
+                },
+                2,
+            );
+
+            expect(after[0].phases).toHaveLength(1);
+            expect(after[0].phases?.[0].status).toBe('complete');
+        });
+
+        it('preserves existing phases and appends new keys in arrival order', () => {
+            let state = [assistantMessage(2, '')];
+
+            for (const [key, label, status] of [
+                ['researcher', 'Researching', 'complete'],
+                ['editor', 'Editing', 'running'],
+                ['critic', 'Reviewing', 'running'],
+            ] as const) {
+                state = applyChatStreamEvent(
+                    state,
+                    { type: 'phase', key, label, status },
+                    2,
+                );
+            }
+
+            expect(state[0].phases?.map((p) => p.key)).toEqual([
+                'researcher',
+                'editor',
+                'critic',
+            ]);
+        });
+
+        it('carries approved/confidence onto the critic phase entry', () => {
+            const before = [assistantMessage(2, '')];
+            const after = applyChatStreamEvent(
+                before,
+                {
+                    type: 'phase',
+                    key: 'critic',
+                    label: 'Reviewing',
+                    status: 'complete',
+                    approved: false,
+                    confidence: 'medium',
+                    issues: ['missing sources'],
+                    missing_topics: ['pricing'],
+                },
+                2,
+            );
+
+            expect(after[0].phases?.[0]).toMatchObject({
+                approved: false,
+                confidence: 'medium',
+                issues: ['missing sources'],
+                missing_topics: ['pricing'],
+            });
+        });
+
+        it('does not touch other messages', () => {
+            const before = [userMessage(1, 'hi'), assistantMessage(2, '')];
+            const after = applyChatStreamEvent(
+                before,
+                {
+                    type: 'phase',
+                    key: 'researcher',
+                    label: 'Researching',
+                    status: 'running',
+                },
+                2,
+            );
+
+            expect(after[0]).toEqual(before[0]);
+        });
+    });
+
     describe('immutability', () => {
         it('returns a new array when modifying messages', () => {
             const before = [assistantMessage(2, 'He')];

@@ -30,6 +30,15 @@ use App\Ai\Tools\MySQLDatabase\RunSelectQueryTool;
 use App\Ai\Tools\MySQLDatabase\SampleTableTool;
 use App\Ai\Tools\MySQLDatabase\ServerInfoTool;
 use App\Ai\Tools\MySQLDatabase\SuggestIndexesTool;
+use App\Ai\Tools\Research\ExtractFactsTool;
+use App\Ai\Tools\Research\FetchPageTool;
+use App\Ai\Tools\Research\SummarizeTextTool;
+use App\Ai\Tools\Research\WebSearchTool;
+use App\Ai\Tools\Research\WikipediaSearchTool;
+use App\Ai\Workflow\Contracts\Critic as CriticContract;
+use App\Ai\Workflow\Contracts\Router as RouterContract;
+use App\Ai\Workflow\Critics\CriticAgentEvaluator;
+use App\Ai\Workflow\Routing\UniversalRouter;
 use Illuminate\Support\ServiceProvider;
 
 class AiServiceProvider extends ServiceProvider
@@ -38,6 +47,12 @@ class AiServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ProjectScope::class);
         $this->app->scoped(Pronunciation::class);
+
+        // UniversalAssistant workflow. Bind the interfaces to the
+        // concrete implementations so the orchestrator can take
+        // Router/Critic by contract and remain swappable in tests.
+        $this->app->bind(RouterContract::class, UniversalRouter::class);
+        $this->app->bind(CriticContract::class, CriticAgentEvaluator::class);
 
         $this->app->tag([
             GlobalNotesContext::class,
@@ -87,5 +102,20 @@ class AiServiceProvider extends ServiceProvider
             AnalyzeSchemaTool::class,
             ExportQueryCsvTool::class,
         ], 'ai.tools.mysql_database');
+
+        /*
+         * Research pipeline tools. Consumed by
+         * {@see \App\Ai\Agents\Research\ResearcherAgent}, which declares
+         * the `ai.tools.research` tag in its own tools() implementation.
+         * The chat-UI-facing {@see \App\Ai\Agents\Research\ResearchAgent}
+         * is tool-free — only the Researcher calls these.
+         */
+        $this->app->tag([
+            WebSearchTool::class,
+            WikipediaSearchTool::class,
+            FetchPageTool::class,
+            SummarizeTextTool::class,
+            ExtractFactsTool::class,
+        ], 'ai.tools.research');
     }
 }

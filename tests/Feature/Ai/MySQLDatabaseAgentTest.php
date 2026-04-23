@@ -133,7 +133,7 @@ test('MySQLDatabaseAgent instructions require evidence from schema or data befor
 
 test('AgentType registers the MySQL Database agent and maps it to the right class', function () {
     expect(AgentType::MySQLDatabase->value)->toBe('mysql-database');
-    expect(AgentType::MySQLDatabase->label())->toBe('MySQL Agent');
+    expect(AgentType::MySQLDatabase->label())->toBe('MySQL Mode');
     expect(AgentType::MySQLDatabase->agentClass())->toBe(MySQLDatabaseAgent::class);
 });
 

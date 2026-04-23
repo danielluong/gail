@@ -64,6 +64,49 @@ class TrackedDatabaseConversationStore extends DatabaseConversationStore
                 }
 
                 if ($toolCalls->isNotEmpty()) {
+                    /*
+                     * Two reasons a persisted assistant-with-tool_calls
+                     * row can't be replayed as-is:
+                     *
+                     *   (a) Orphan tool_calls — more tool_calls than
+                     *       matching tool_results. OpenAI's chat API
+                     *       requires 1:1 pairing between function_call
+                     *       and function_call_output entries.
+                     *   (b) Missing result_id — the OpenAI Responses
+                     *       API maps ToolCall::resultId to `call_id`,
+                     *       the field it uses to match function_call
+                     *       and function_call_output. Null or missing
+                     *       values fail validation with HTTP 400.
+                     *
+                     * Both symptoms come from rows written before the
+                     * persist-side fix existed. We sanitise on read so
+                     * existing conversations keep working without a
+                     * migration — the worst case is the model forgets
+                     * that tools ran, but the turn completes.
+                     */
+                    $resultIds = $toolResults
+                        ->pluck('id')
+                        ->filter(fn ($id) => $id !== null)
+                        ->all();
+                    $toolCalls = $toolCalls
+                        ->filter(fn ($tc) => isset($tc['id'])
+                            && in_array($tc['id'], $resultIds, true)
+                            && ! empty($tc['result_id'])
+                        )
+                        ->values();
+
+                    if ($toolCalls->isEmpty()) {
+                        return [new AssistantMessage($record->content ?: '')];
+                    }
+
+                    $callIds = $toolCalls->pluck('id')->all();
+                    $toolResults = $toolResults
+                        ->filter(fn ($tr) => isset($tr['id'])
+                            && in_array($tr['id'], $callIds, true)
+                            && ! empty($tr['result_id'])
+                        )
+                        ->values();
+
                     /** @var list<Message> $messages */
                     $messages = [];
 

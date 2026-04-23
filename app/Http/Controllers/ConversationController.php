@@ -75,6 +75,7 @@ class ConversationController extends Controller
                     'content' => $latest['content'],
                     'attachments' => $latest['attachments'],
                     'toolCalls' => $latest['toolCalls'],
+                    'phases' => $latest['phases'],
                     'model' => $latest['model'],
                     'usage' => $latest['usage'],
                     'cost' => $latest['cost'],

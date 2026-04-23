@@ -139,6 +139,7 @@ export function useMessageStream(
             'tool_call',
             'tool_result',
             'message_usage',
+            'phase',
             'error',
         ]);
 
@@ -316,15 +317,30 @@ export function useMessageStream(
                     model: msg.model,
                     usage: msg.usage,
                     cost: msg.cost,
+                    phases: msg.phases,
                     created_at: msg.created_at,
                 };
 
                 const priorVariants = msg.variants ?? [];
 
+                /*
+                 * Reset the per-turn state the new stream will repaint.
+                 * `phases` and `error` / `status` all have to be
+                 * explicitly zeroed out — not just the visible content
+                 * — otherwise a prior errored or research turn leaves
+                 * residue that overrides the render path for the empty
+                 * streaming bubble (ThinkingIndicator hides whenever
+                 * the bubble still has non-empty content, even if
+                 * that content is a stale error message from the
+                 * previous attempt).
+                 */
                 return {
                     ...msg,
                     content: '',
                     toolCalls: [],
+                    phases: [],
+                    error: false,
+                    status: undefined,
                     model: model ?? undefined,
                     usage: null,
                     cost: null,

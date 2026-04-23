@@ -71,6 +71,7 @@ class ConversationMessage extends Model
      *     content: ?string,
      *     attachments: list<array{name: string, type: ?string, url: ?string}>,
      *     toolCalls: list<array{tool_id: string, tool_name: string, arguments: array<string, mixed>, result: ?string}>,
+     *     phases: list<array<string, mixed>>,
      *     model: ?string,
      *     usage: ?array{prompt_tokens: int, completion_tokens: int},
      *     cost: ?float,
@@ -79,9 +80,15 @@ class ConversationMessage extends Model
      */
     public function toChatUiArray(): array
     {
-        $model = is_array($this->meta) ? ($this->meta['model'] ?? null) : null;
+        $meta = is_array($this->meta) ? $this->meta : [];
+        $model = $meta['model'] ?? null;
         $modelName = is_string($model) && $model !== '' ? $model : null;
         $usage = $this->usageForUi();
+
+        $rawPhases = $meta['phases'] ?? [];
+        $phases = is_array($rawPhases)
+            ? array_values(array_filter($rawPhases, 'is_array'))
+            : [];
 
         return [
             'id' => (string) $this->id,
@@ -89,6 +96,7 @@ class ConversationMessage extends Model
             'content' => $this->content,
             'attachments' => app(AttachmentFormatter::class)->format($this->attachments),
             'toolCalls' => app(ToolCallFormatter::class)->format($this->tool_calls, $this->tool_results),
+            'phases' => $phases,
             'model' => $modelName,
             'usage' => $usage,
             'cost' => app(ModelPricing::class)->costFor($modelName, $usage),

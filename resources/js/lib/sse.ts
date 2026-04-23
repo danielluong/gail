@@ -38,6 +38,16 @@ export type StreamEvent =
       }
     | { type: 'conversation'; conversation_id: string }
     | { type: 'error'; message: string }
+    | {
+          type: 'phase';
+          key: string;
+          label: string;
+          status: 'running' | 'complete' | 'failed';
+          approved?: boolean;
+          confidence?: 'low' | 'medium' | 'high';
+          issues?: string[];
+          missing_topics?: string[];
+      }
     | { type: 'done' };
 
 export async function* parseSseStream(

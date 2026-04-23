@@ -2,6 +2,8 @@
 
 namespace App\Ai\Agents;
 
+use App\Actions\Chat\StreamChatResponse;
+use App\Actions\Contracts\MultiAgentStreamAction;
 use App\Ai\Context\ContextProvider;
 use App\Models\Project;
 use Laravel\Ai\Attributes\MaxSteps;
@@ -42,6 +44,20 @@ abstract class BaseAgent implements Agent, Conversational, HasProviderOptions, H
     protected ?Project $project = null;
 
     protected ?float $temperature = null;
+
+    /**
+     * Fully-qualified class name of the {@see MultiAgentStreamAction}
+     * implementation that drives this agent's chat-UI stream. Plain
+     * {@see BaseAgent} subclasses use {@see StreamChatResponse} (one
+     * SingleAgentPipeline, no Critic, no phases); {@see MultiAgentFacade}
+     * subclasses override to point at their workflow's streaming action.
+     *
+     * @return class-string<MultiAgentStreamAction>
+     */
+    public static function streamingActionClass(): string
+    {
+        return StreamChatResponse::class;
+    }
 
     public function forProject(?int $projectId): static
     {

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\ResolveChatAgent;
-use App\Actions\Chat\StreamChatResponse;
 use App\Actions\Chat\TruncateMessagesFromMessage;
 use App\Ai\Agents\AgentType;
 use App\Http\Requests\StreamChatRequest;
@@ -98,7 +97,6 @@ class ChatController extends Controller
         StreamChatRequest $request,
         ResolveChatAgent $resolveAgent,
         TruncateMessagesFromMessage $truncate,
-        StreamChatResponse $stream,
     ): StreamedResponse {
         $conversationId = $request->validated('conversation_id');
         $temperature = $request->validated('temperature');
@@ -116,9 +114,15 @@ class ChatController extends Controller
             $truncate->execute($conversationId, $editMessageId);
         }
 
-        return $stream->execute(
+        // Every agent declares its own streamingActionClass() — plain
+        // BaseAgents default to StreamChatResponse (wraps in a
+        // SingleAgentPipeline, no Critic), MultiAgentFacade subclasses
+        // override to point at their workflow's streaming action. The
+        // SSE contract is shared across every workflow, so the UI
+        // cannot tell them apart — only the set of phase frames differs.
+        return app($agent::streamingActionClass())->execute(
             agent: $agent,
-            message: $request->validated('message'),
+            message: (string) $request->validated('message'),
             filePaths: $request->validated('file_paths') ?? [],
             model: $request->validated('model'),
             projectId: $projectId,

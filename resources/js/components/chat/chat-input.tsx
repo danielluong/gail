@@ -5,8 +5,8 @@ import { useAudioRecorder } from '@/hooks/use-audio-recorder';
 import { useFileUpload } from '@/hooks/use-file-upload';
 import { useSharedProps } from '@/hooks/use-shared-props';
 import type { Attachment } from '@/types/chat';
-import { AttachmentTray } from './attachment-tray';
 import { AgentSelector, type AgentOption } from './agent-selector';
+import { AttachmentTray } from './attachment-tray';
 import { ModelSelector } from './model-selector';
 import { SettingsPanel } from './settings-panel';
 

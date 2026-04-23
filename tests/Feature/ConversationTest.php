@@ -133,6 +133,58 @@ test('messages collapse variants into the top-level slot with history', function
     expect($response->json('1.variants.1.content'))->toBe('regen 1');
 });
 
+test('messages collapse uses the latest variant phases, not the original', function () {
+    /*
+     * Regression: regenerating a research turn with a non-research
+     * agent (e.g. flipping the dropdown to Default Agent) left the
+     * original research turn's phase strip visible on the top-level
+     * message after refresh. The collapse code was carrying
+     * `content` and the other per-variant fields forward from the
+     * latest variant but still inheriting `phases` from the base
+     * (original) row.
+     */
+    $conversation = Conversation::factory()->create();
+
+    ConversationMessage::factory()->create([
+        'conversation_id' => $conversation->id,
+        'role' => 'user',
+        'content' => 'q',
+        'created_at' => now()->subMinutes(5),
+    ]);
+
+    $original = ConversationMessage::factory()->assistant()->create([
+        'conversation_id' => $conversation->id,
+        'content' => 'research answer',
+        'meta' => [
+            'model' => 'gpt-4o',
+            'phases' => [
+                ['key' => 'researcher', 'label' => 'Researching', 'status' => 'complete'],
+                ['key' => 'editor', 'label' => 'Editing', 'status' => 'complete'],
+                ['key' => 'critic', 'label' => 'Reviewing', 'status' => 'complete'],
+            ],
+        ],
+        'created_at' => now()->subMinutes(4),
+    ]);
+
+    ConversationMessage::factory()
+        ->variantOf($original)
+        ->create([
+            'content' => 'chat agent answer',
+            'meta' => ['model' => 'gpt-4o'], // no phases — this variant came from the plain ChatAgent
+            'created_at' => now()->subMinute(),
+        ]);
+
+    $response = $this->getJson(route('conversations.messages', $conversation->id))
+        ->assertOk();
+
+    expect($response->json('1.content'))->toBe('chat agent answer');
+    // The latest variant had no phases, so the top-level slot must
+    // not inherit the research phases from the original.
+    expect($response->json('1.phases'))->toBe([]);
+    // The original's phases are still carried on the variant itself.
+    expect($response->json('1.variants.0.phases'))->toHaveCount(3);
+});
+
 test('messages omit variants key for assistant messages without regenerations', function () {
     $conversation = Conversation::factory()->create();
 

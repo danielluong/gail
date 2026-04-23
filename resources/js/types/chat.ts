@@ -38,6 +38,23 @@ export type Usage = {
     reasoning_tokens?: number;
 };
 
+/*
+ * A single stage in a multi-agent workflow's lifecycle (Researcher →
+ * Editor → Critic for the research pipeline). The reducer upserts
+ * phases on the active assistant message as `phase` SSE frames
+ * arrive, and the persisted copy rides on ConversationMessage.meta
+ * so a reload still shows what happened.
+ */
+export type Phase = {
+    key: string;
+    label: string;
+    status: 'running' | 'complete' | 'failed';
+    approved?: boolean;
+    confidence?: 'low' | 'medium' | 'high';
+    issues?: string[];
+    missing_topics?: string[];
+};
+
 export type Message = {
     id: string | number;
     role: 'user' | 'assistant';
@@ -50,6 +67,7 @@ export type Message = {
     usage?: Usage | null;
     cost?: number | null;
     variants?: MessageVariant[];
+    phases?: Phase[];
     created_at?: string;
 };
 
@@ -67,5 +85,6 @@ export type MessageVariant = {
     model?: string;
     usage?: Usage | null;
     cost?: number | null;
+    phases?: Phase[];
     created_at?: string;
 };

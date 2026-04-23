@@ -65,6 +65,41 @@ export function MessageList({
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    /*
+     * When a new stream starts — new turn, regenerate, or edit — drop
+     * any stored carousel selection for the last assistant slot so the
+     * new top-level variant becomes the default view once the stream
+     * completes. Without this, a regenerate appends a new variant and
+     * the stored index (which pointed at the previous latest) now
+     * points at a stale older one, which flashes back on-screen the
+     * moment isStreaming flips to false.
+     */
+    useEffect(() => {
+        if (!isStreaming) {
+            return;
+        }
+
+        const lastAssistant = [...messagesRef.current]
+            .reverse()
+            .find((m) => m.role === 'assistant');
+
+        if (!lastAssistant) {
+            return;
+        }
+
+        setActiveVariantByMessageId((prev) => {
+            const key = String(lastAssistant.id);
+
+            if (!(key in prev)) {
+                return prev;
+            }
+
+            const { [key]: _, ...rest } = prev;
+
+            return rest;
+        });
+    }, [isStreaming]);
+
     const startEdit = useCallback((messageId: string | number) => {
         const target = messagesRef.current.find((m) => m.id === messageId);
 
@@ -124,16 +159,30 @@ export function MessageList({
                          * `variants`, so the total slot count is
                          * `variants.length + 1` and the default active
                          * index is the last one (the top-level).
+                         *
+                         * While a turn is actively streaming — the
+                         * bubble is empty and isStreaming is true —
+                         * force display of the latest slot regardless
+                         * of any stored carousel selection. Without
+                         * this, a regenerate that appends a new
+                         * variant leaves the stored index pointing at
+                         * an older one, the UI shows that older
+                         * variant's content, and ThinkingIndicator
+                         * never appears for the new stream.
                          */
                         const variantCount =
                             message.role === 'assistant' && message.variants
                                 ? message.variants.length + 1
                                 : undefined;
+                        const forceLatestVariant =
+                            isCurrentlyStreaming && message.content === '';
                         const activeVariantIndex =
                             variantCount !== undefined
-                                ? (activeVariantByMessageId[
-                                      String(message.id)
-                                  ] ?? variantCount - 1)
+                                ? forceLatestVariant
+                                    ? variantCount - 1
+                                    : (activeVariantByMessageId[
+                                          String(message.id)
+                                      ] ?? variantCount - 1)
                                 : undefined;
                         const isLatestVariantActive =
                             variantCount === undefined ||
@@ -162,6 +211,9 @@ export function MessageList({
                                       cost: message.variants[
                                           activeVariantIndex
                                       ].cost,
+                                      phases: message.variants[
+                                          activeVariantIndex
+                                      ].phases,
                                       created_at:
                                           message.variants[activeVariantIndex]
                                               .created_at,

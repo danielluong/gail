@@ -2,9 +2,14 @@ import { memo, useMemo } from 'react';
 import type { ComponentPropsWithoutRef } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { extractCitations, linkifyCitations } from '@/lib/citations';
+import {
+    extractCitations,
+    extractSourcesFromMarkdown,
+    linkifyCitations,
+} from '@/lib/citations';
 import type { Message } from '@/types/chat';
 import { CodeBlock } from './code-block';
+import { PhaseStrip } from './phase-strip';
 import { ThinkingIndicator } from './thinking-indicator';
 import { ToolCallBlock } from './tool-call-block';
 
@@ -68,7 +73,17 @@ function AssistantMessageImpl({ message, isStreaming }: Props) {
             return message.content;
         }
 
-        const citations = extractCitations(message.toolCalls);
+        /*
+         * Merge the two citation sources so one rewrite pass handles
+         * both the chat agent (cites WebSearch tool results) and the
+         * research agent (cites its final Sources section). The
+         * Editor-composed Sources block takes precedence because it's
+         * what the user actually sees numbered in the answer.
+         */
+        const citations = new Map([
+            ...extractCitations(message.toolCalls),
+            ...extractSourcesFromMarkdown(message.content),
+        ]);
 
         return linkifyCitations(message.content, citations);
     }, [message.content, message.toolCalls]);
@@ -81,6 +96,9 @@ function AssistantMessageImpl({ message, isStreaming }: Props) {
                     : 'text-gray-800 dark:text-gray-200'
             }`}
         >
+            {message.phases && message.phases.length > 0 && (
+                <PhaseStrip phases={message.phases} />
+            )}
             {message.toolCalls && message.toolCalls.length > 0 && (
                 <div className="mb-1">
                     {message.toolCalls.map((tc) => (
